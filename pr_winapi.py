@@ -1,9 +1,19 @@
-from win32process import EnumProcesses
-from win32api import OpenProcess
+from win32process import EnumProcesses, GetProcessMemoryInfo, EnumProcessModules, GetModuleFileNameEx
+from win32api import OpenProcess, TerminateProcess
 
-print(EnumProcesses())  # получает id процессов
-PROCESS_QUERY_LIMITED_INFORMATION = 0x1000  #просто 16-ная константа, позволяющая просить разные уровни доступа
-p = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, 1976)  # присоединяемся к процессу. (уровень доступа (у нас лайт), ..., pid)
-# глубоко в си, какие-то токены, системы отладки.... проблема началась с винды 8
-# нам все это нужно для handle, без него мы никто))
-# винда не пускает!!!!
+PROCESS_ALL_ACCESS = 0xFFFF
+
+for pid in EnumProcesses():
+    try:
+        handle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
+        modules = EnumProcessModules(handle)
+        files = set([GetModuleFileNameEx(handle, x) for x in modules])
+        print(pid, files)
+    except BaseException as e:
+        if e.args[2] not in (['Access is denied.', 'The parameter is incorrect.']):
+            print(pid, e.args)
+
+print('====================================')
+handle = OpenProcess(PROCESS_ALL_ACCESS, False, 8480)
+print(GetProcessMemoryInfo(handle))
+TerminateProcess(handle, 1)
